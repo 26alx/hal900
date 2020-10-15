@@ -71,10 +71,10 @@ SystemInit(
     pCpu = NULL;
 
     LogSystemInit(LogLevelInfo,
-                  LogComponentInterrupt | LogComponentIo | LogComponentAcpi,
+                  LogComponentInterrupt | LogComponentIo | LogComponentAcpi | LogComponentGeneric,
                   TRUE
                   );
-
+    
     // if validation fails => the system will HALT
     CpuMuValidateConfiguration();
 

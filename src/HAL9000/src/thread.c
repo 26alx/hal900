@@ -10,9 +10,9 @@
 #include "gdtmu.h"
 #include "pe_exports.h"
 
-#define TID_INCREMENT               4
+#define TID_INCREMENT               0x10
 
-#define THREAD_TIME_SLICE           1
+#define THREAD_TIME_SLICE           4
 
 extern void ThreadStart();
 
@@ -27,6 +27,10 @@ extern FUNC_ThreadSwitch            ThreadSwitch;
 
 typedef struct _THREAD_SYSTEM_DATA
 {
+
+    _Interlocked_
+    volatile DWORD NumberOfThreads;
+
     LOCK                AllThreadsLock;
 
     _Guarded_by_(AllThreadsLock)
@@ -443,7 +447,8 @@ ThreadTick(
     if (++pCpu->ThreadData.RunningThreadTicks >= THREAD_TIME_SLICE)
     {
         LOG_TRACE_THREAD("Will yield on return\n");
-        pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
+        //pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
+        ThreadYield();
     }
 }
 
@@ -466,8 +471,8 @@ ThreadYield(
 
     ASSERT( NULL != pCpu );
 
-    bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
-    pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
+    //bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
+    //pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
 
     if (THREAD_FLAG_FORCE_TERMINATE_PENDING == _InterlockedAnd(&pThread->Flags, MAX_DWORD))
     {
@@ -551,6 +556,8 @@ ThreadExit(
 
     pThread = GetCurrentThread();
 
+    LOG("Ended TName: %s, TId: 0x%X\n", pThread->Name, pThread->Id);
+
     CpuIntrDisable();
 
     if (LockIsOwner(&pThread->BlockLock))
@@ -562,11 +569,14 @@ ThreadExit(
     pThread->ExitStatus = ExitStatus;
     ExEventSignal(&pThread->TerminationEvt);
 
+    _InterlockedDecrement(&m_threadSystemData.NumberOfThreads);
+
     ProcessNotifyThreadTermination(pThread);
 
     LockAcquire(&m_threadSystemData.ReadyThreadsLock, &oldState);
     _ThreadSchedule();
     NOT_REACHED;
+
 }
 
 BOOLEAN
@@ -574,7 +584,7 @@ ThreadYieldOnInterrupt(
     void
     )
 {
-    return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
+    //return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
 }
 
 void
@@ -651,6 +661,11 @@ ThreadGetPriority(
     PTHREAD pThread = (NULL != Thread) ? Thread : GetCurrentThread();
 
     return (NULL != pThread) ? pThread->Priority : 0;
+}
+
+DWORD ThreadGetNumberOfThreads()
+{
+    return m_threadSystemData.NumberOfThreads;
 }
 
 void
@@ -791,14 +806,17 @@ _ThreadInit(
         strcpy(pThread->Name, Name);
 
         pThread->Id = _ThreadSystemGetNextTid();
+        pThread->PId = 0x1;
         pThread->State = ThreadStateBlocked;
         pThread->Priority = Priority;
-
+        
         LockInit(&pThread->BlockLock);
 
         LockAcquire(&m_threadSystemData.AllThreadsLock, &oldIntrState);
         InsertTailList(&m_threadSystemData.AllThreadsList, &pThread->AllList);
         LockRelease(&m_threadSystemData.AllThreadsLock, oldIntrState);
+
+        _InterlockedIncrement(&m_threadSystemData.NumberOfThreads);
     }
     __finally
     {
@@ -815,6 +833,8 @@ _ThreadInit(
 
         LOG_FUNC_END;
     }
+
+    LOG("Started TName: %s, TId: 0x%X\n", pThread->Name, pThread->Id);
 
     return status;
 }
