@@ -1,3 +1,6 @@
+diff --git a/lab2.diff b/lab2.diff
+new file mode 100644
+index 0000000..e69de29
 diff --git a/postbuild/paths.cmd b/postbuild/paths.cmd
 index cec924b..fc2fac1 100644
 --- a/postbuild/paths.cmd
@@ -25,19 +28,6 @@ index cec924b..fc2fac1 100644
 +
  :end
 \ No newline at end of file
-diff --git a/src/HAL9000/headers/cpumu.h b/src/HAL9000/headers/cpumu.h
-index e1f610c..7224f63 100644
---- a/src/HAL9000/headers/cpumu.h
-+++ b/src/HAL9000/headers/cpumu.h
-@@ -17,7 +17,7 @@ typedef struct _THREADING_DATA
-     struct _THREAD*     CurrentThread;
-     struct _THREAD*     PreviousThread;
- 
--    BOOLEAN             YieldOnInterruptReturn;
-+    //BOOLEAN             YieldOnInterruptReturn;
- 
-     QWORD               IdleTicks;
-     QWORD               KernelTicks;
 diff --git a/src/HAL9000/headers/thread_internal.h b/src/HAL9000/headers/thread_internal.h
 index be2588a..50f2fa5 100644
 --- a/src/HAL9000/headers/thread_internal.h
@@ -81,6 +71,19 @@ index f794c95..ea3547c 100644
      LOG("%6x%c", pThread->Id, '|');
      LOG("%19s%c", pThread->Name, '|');
      LOG("%4U%c", pThread->Priority, '|');
+diff --git a/src/HAL9000/src/iomu.c b/src/HAL9000/src/iomu.c
+index a704910..ae9c84a 100644
+--- a/src/HAL9000/src/iomu.c
++++ b/src/HAL9000/src/iomu.c
+@@ -28,7 +28,7 @@
+ #define PIC_MASTER_OFFSET                   0x20
+ #define PIC_SLAVE_OFFSET                    0x28
+ 
+-#define SCHEDULER_TIMER_INTERRUPT_TIME_US   (40*MS_IN_US)
++#define SCHEDULER_TIMER_INTERRUPT_TIME_US   (10*MS_IN_US)
+ 
+ #define HAL9000_SYSTEM_FILE_NAME            "HAL9000.ini"
+ 
 diff --git a/src/HAL9000/src/system.c b/src/HAL9000/src/system.c
 index b0b436e..a98af89 100644
 --- a/src/HAL9000/src/system.c
@@ -99,10 +102,10 @@ index b0b436e..a98af89 100644
      CpuMuValidateConfiguration();
  
 diff --git a/src/HAL9000/src/thread.c b/src/HAL9000/src/thread.c
-index 501640f..df79623 100644
+index 501640f..9e90a39 100644
 --- a/src/HAL9000/src/thread.c
 +++ b/src/HAL9000/src/thread.c
-@@ -10,9 +10,9 @@
+@@ -10,9 +10,10 @@
  #include "gdtmu.h"
  #include "pe_exports.h"
  
@@ -110,11 +113,12 @@ index 501640f..df79623 100644
 +#define TID_INCREMENT               0x10
  
 -#define THREAD_TIME_SLICE           1
++//having smaller time slices can be costly because of the overhead created by context switching, so 1 * 40 and 4 * 10 are not equivalent
 +#define THREAD_TIME_SLICE           4
  
  extern void ThreadStart();
  
-@@ -27,6 +27,10 @@ extern FUNC_ThreadSwitch            ThreadSwitch;
+@@ -27,6 +28,10 @@ extern FUNC_ThreadSwitch            ThreadSwitch;
  
  typedef struct _THREAD_SYSTEM_DATA
  {
@@ -125,28 +129,15 @@ index 501640f..df79623 100644
      LOCK                AllThreadsLock;
  
      _Guarded_by_(AllThreadsLock)
-@@ -443,7 +447,8 @@ ThreadTick(
-     if (++pCpu->ThreadData.RunningThreadTicks >= THREAD_TIME_SLICE)
+@@ -444,6 +449,7 @@ ThreadTick(
      {
          LOG_TRACE_THREAD("Will yield on return\n");
--        pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
-+        //pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
-+        ThreadYield();
+         pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
++        //ThreadYield();
      }
  }
  
-@@ -466,8 +471,8 @@ ThreadYield(
- 
-     ASSERT( NULL != pCpu );
- 
--    bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
--    pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
-+    //bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
-+    //pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
- 
-     if (THREAD_FLAG_FORCE_TERMINATE_PENDING == _InterlockedAnd(&pThread->Flags, MAX_DWORD))
-     {
-@@ -551,6 +556,8 @@ ThreadExit(
+@@ -551,6 +557,8 @@ ThreadExit(
  
      pThread = GetCurrentThread();
  
@@ -155,7 +146,7 @@ index 501640f..df79623 100644
      CpuIntrDisable();
  
      if (LockIsOwner(&pThread->BlockLock))
-@@ -562,11 +569,14 @@ ThreadExit(
+@@ -562,11 +570,14 @@ ThreadExit(
      pThread->ExitStatus = ExitStatus;
      ExEventSignal(&pThread->TerminationEvt);
  
@@ -170,16 +161,7 @@ index 501640f..df79623 100644
  }
  
  BOOLEAN
-@@ -574,7 +584,7 @@ ThreadYieldOnInterrupt(
-     void
-     )
- {
--    return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
-+    //return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
- }
- 
- void
-@@ -653,6 +663,11 @@ ThreadGetPriority(
+@@ -653,6 +664,11 @@ ThreadGetPriority(
      return (NULL != pThread) ? pThread->Priority : 0;
  }
  
@@ -191,11 +173,11 @@ index 501640f..df79623 100644
  void
  ThreadSetPriority(
      IN      THREAD_PRIORITY     NewPriority
-@@ -791,14 +806,17 @@ _ThreadInit(
+@@ -791,14 +807,17 @@ _ThreadInit(
          strcpy(pThread->Name, Name);
  
          pThread->Id = _ThreadSystemGetNextTid();
-+        pThread->PId = 0x1;
++        pThread->PId = ThreadGetId(GetCurrentThread());
          pThread->State = ThreadStateBlocked;
          pThread->Priority = Priority;
 -
@@ -210,7 +192,7 @@ index 501640f..df79623 100644
      }
      __finally
      {
-@@ -816,6 +834,8 @@ _ThreadInit(
+@@ -816,6 +835,8 @@ _ThreadInit(
          LOG_FUNC_END;
      }
  

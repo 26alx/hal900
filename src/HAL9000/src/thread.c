@@ -12,6 +12,7 @@
 
 #define TID_INCREMENT               0x10
 
+//having smaller time slices can be costly because of the overhead created by context switching, so 1 * 40 and 4 * 10 are not equivalent
 #define THREAD_TIME_SLICE           4
 
 extern void ThreadStart();
@@ -447,8 +448,8 @@ ThreadTick(
     if (++pCpu->ThreadData.RunningThreadTicks >= THREAD_TIME_SLICE)
     {
         LOG_TRACE_THREAD("Will yield on return\n");
-        //pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
-        ThreadYield();
+        pCpu->ThreadData.YieldOnInterruptReturn = TRUE;
+        //ThreadYield();
     }
 }
 
@@ -471,8 +472,8 @@ ThreadYield(
 
     ASSERT( NULL != pCpu );
 
-    //bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
-    //pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
+    bForcedYield = pCpu->ThreadData.YieldOnInterruptReturn;
+    pCpu->ThreadData.YieldOnInterruptReturn = FALSE;
 
     if (THREAD_FLAG_FORCE_TERMINATE_PENDING == _InterlockedAnd(&pThread->Flags, MAX_DWORD))
     {
@@ -584,7 +585,7 @@ ThreadYieldOnInterrupt(
     void
     )
 {
-    //return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
+    return GetCurrentPcpu()->ThreadData.YieldOnInterruptReturn;
 }
 
 void
@@ -806,7 +807,7 @@ _ThreadInit(
         strcpy(pThread->Name, Name);
 
         pThread->Id = _ThreadSystemGetNextTid();
-        pThread->PId = 0x1;
+        pThread->PId = ThreadGetId(GetCurrentThread());
         pThread->State = ThreadStateBlocked;
         pThread->Priority = Priority;
         
