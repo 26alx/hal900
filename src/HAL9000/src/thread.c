@@ -405,8 +405,13 @@ ThreadCreateEx(
     {
         pThread->State = ThreadStateReady;
 
+        LOG("TEST LOG LEVEL\n");
+        
         // this is the IDLE thread creation
         pCpu->ThreadData.IdleThread = pThread;
+        
+        LogSetLevel(LogLevelInfo);
+        LOG("TEST LOG LEVEL\n");
     }
     else
     {

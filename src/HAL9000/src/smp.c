@@ -340,7 +340,7 @@ SmpWakeupAps(
         LOGL("Will signal APs\n");
         _SmpSignalAllAPs(m_smpData.SipiVector);
         LOGL("APs were signaled\n");
-
+    
         ExEventWaitForSignal(&m_smpData.ApStartupEvent);
 
         LOGL("Aps have waken UP\n");

@@ -15,6 +15,7 @@ set VOL_MOUNT_LETTER=__EMPTY__
 if _%COMPUTERNAME%_==_AGURZOU-DEV-PC_ goto config_AGURZOU-DEV
 if _%COMPUTERNAME%_==_ALEX-PC_ goto config_ALEX-PC
 if _%COMPUTERNAME%_==_AGURZOU-LPT_ goto config_AGURZOU-LPT
+if _%COMPUTERNAME%_==_ELEVENPM-XPS15_ goto config_ELEVENPM-XPS15
 
 echo.
 echo ERROR: host '%COMPUTERNAME%' not recognized by PATHS.CMD, build FAILED!
