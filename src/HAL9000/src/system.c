@@ -40,9 +40,9 @@ SystemPreinit(
     )
 {
     memzero(&m_systemData, sizeof(SYSTEM_DATA));
-
+    
     m_systemData.NumberOfTssStacks = NO_OF_TSS_STACKS;
-
+    
     BootModulesPreinit();
     DumpPreinit();
     ThreadSystemPreinit();
@@ -71,7 +71,7 @@ SystemInit(
     status = STATUS_SUCCESS;
     pCpu = NULL;
 
-    LogSystemInit(LogLevelInfo,
+    LogSystemInit(LogLevelError,
                   LogComponentInterrupt | LogComponentIo | LogComponentAcpi,
                   TRUE
                   );
@@ -112,6 +112,7 @@ SystemInit(
     }
 
     LOGL("OsInfoInit succeeded\n");
+
 
     // IDT handlers need to be initialized before
     // MmuInitSystem is called because the VMM
@@ -248,6 +249,8 @@ SystemInit(
         LOG_FUNC_ERROR("ThreadSystemInitIdleForCurrentCPU", status);
         return status;
     }
+    //Logging level set to info after idle thread was created on BSP
+    LogSetLevel(LogLevelInfo);
 
     LOGL("ThreadSystemInitIdleForCurrentCPU succeeded\n");
 

@@ -248,12 +248,14 @@ MmuPreinitSystem(
     )
 {
     memzero(&m_mmuData, sizeof(MMU_DATA));
-
+   
     RecRwSpinlockInit(0, &m_mmuData.PagingData.Lock);
 
     InitializeListHead(&m_mmuData.ZeroThreadData.PagesToZeroList);
     LockInit(&m_mmuData.ZeroThreadData.PagesLock);
-    DWORD z = *((PBYTE)NULL);z;
+    //first problem that made hal9000 reboot null pointer exception
+    //used a lot of halts to get to this lil bugger 
+    //DWORD z = *((PBYTE)NULL);z;
 
     PmmPreinitSystem();
     VmmPreinit();
